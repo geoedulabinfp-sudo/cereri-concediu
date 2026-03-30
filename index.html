@@ -289,19 +289,36 @@
   .print-sig-row { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 48px; }
   .print-sig { text-align: center; font-size: 12px; }
   .print-sig-name { font-weight: bold; margin-top: 40px; border-top: 1px solid #333; padding-top: 6px; }
-  .print-approved-stamp {
-    position: absolute; top: 80px; right: 72px;
-    border: 2px solid var(--green);
-    color: var(--green);
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-size: 12px; font-weight: bold;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    transform: rotate(-8deg);
-    opacity: 0;
-    transition: opacity 0.3s;
+  .print-approved-stamp { display: none; }
+  .sig-img {
+    display: block;
+    max-height: 56px;
+    max-width: 160px;
+    margin: 8px auto 0;
+    object-fit: contain;
   }
-  .print-approved-stamp.show { opacity: 1; }
+  /* ── SIGNATURE UPLOAD ── */
+  .sig-upload-box {
+    border: 1.5px dashed var(--border2);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: var(--surface);
+  }
+  .sig-upload-box:hover { border-color: var(--accent); background: var(--accent-light); }
+  .sig-preview-wrap { display: flex; align-items: center; gap: 12px; }
+  .sig-preview-wrap img { max-height: 48px; max-width: 140px; object-fit: contain; border: 1px solid var(--border); border-radius: 4px; background: #fff; padding: 2px; }
+  .sig-settings-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
   .print-close-row { display: flex; gap: 10px; justify-content: center; margin-top: 24px; }
   .print-meta { font-size: 11px; color: #888; text-align: right; margin-top: 32px; border-top: 1px solid #ddd; padding-top: 10px; }
 
@@ -398,6 +415,64 @@
     .print-container { padding: 40px 28px; }
     .print-sig-row { grid-template-columns: 1fr; }
   }
+
+  /* ── SOLD PAGE ── */
+  .sold-year-bar {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 24px; flex-wrap: wrap;
+  }
+  .sold-year-bar select { padding: 7px 12px; font-size: 14px; border-radius: 7px; border: 1px solid var(--border); }
+  .sold-table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .sold-table th {
+    background: var(--surface2);
+    font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text2); padding: 11px 16px;
+    text-align: left; border-bottom: 1px solid var(--border);
+  }
+  .sold-table td { padding: 13px 16px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
+  .sold-table tr:last-child td { border-bottom: none; }
+  .sold-table tr:hover td { background: var(--surface2); }
+  .sold-bar-wrap { display: flex; align-items: center; gap: 10px; min-width: 120px; }
+  .sold-bar-bg { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .sold-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+  .sold-num { font-family: 'DM Mono', monospace; font-size: 13px; min-width: 36px; text-align: right; font-weight: 500; }
+  .sold-num.ok { color: var(--green); }
+  .sold-num.warn { color: var(--amber); }
+  .sold-num.empty-val { color: var(--text3); }
+  .sold-edit-btn {
+    background: none; border: 1px solid var(--border);
+    border-radius: 5px; padding: 3px 10px; font-size: 12px;
+    cursor: pointer; color: var(--text2); font-family: 'DM Sans', sans-serif;
+    transition: all 0.12s;
+  }
+  .sold-edit-btn:hover { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+  .sold-inline-input {
+    width: 60px; padding: 3px 8px; font-size: 13px;
+    border: 1px solid var(--accent); border-radius: 5px;
+    font-family: 'DM Mono', monospace; text-align: center;
+  }
+  .sold-add-row {
+    display: flex; gap: 10px; align-items: flex-end;
+    flex-wrap: wrap; margin-top: 20px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px 22px;
+    box-shadow: var(--shadow);
+  }
+  .sold-add-row .field { flex: 1; min-width: 140px; }
+  .sold-legend {
+    display: flex; gap: 20px; flex-wrap: wrap;
+    font-size: 12px; color: var(--text2); margin-top: 14px;
+  }
+  .sold-legend span { display: flex; align-items: center; gap: 6px; }
+  .sold-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
 </style>
 </head>
 <body>
@@ -409,8 +484,9 @@
     GeoEduLab · INCDFP
   </div>
   <div class="nav-tabs">
-    <button class="nav-tab active" onclick="showPage('formular')">Formular cerere</button>
-    <button class="nav-tab" onclick="requireLogin('dashboard')">Dashboard coordonator</button>
+    <button class="nav-tab active" id="tab-formular" onclick="showPage('formular')">Formular cerere</button>
+    <button class="nav-tab" id="tab-solduri" onclick="showPage('solduri')">Sold zile CO</button>
+    <button class="nav-tab" id="tab-dashboard" onclick="requireLogin('dashboard')">Dashboard coordonator</button>
   </div>
   <div class="nav-meta" id="nav-date"></div>
 </nav>
@@ -439,7 +515,6 @@
 <div id="print-overlay">
   <div>
     <div class="print-container" id="print-doc">
-      <div class="print-approved-stamp" id="stamp">APROBAT</div>
       <div class="print-header">
         <h3>Institutul Național de Cercetare-Dezvoltare pentru Fizica Pământului</h3>
         <p>Laborator GeoEduLab</p>
@@ -460,12 +535,14 @@
         <div class="print-sig">
           <div>Data:</div>
           <div id="print-date-cerere" style="font-weight:bold"></div>
+          <img id="print-sig-img-solicitant" class="sig-img" src="" style="display:none">
           <div class="print-sig-name" id="print-sig-solicitant"></div>
           <div style="font-size:11px;color:#555">Semnătură solicitant</div>
         </div>
         <div class="print-sig">
           <div>VIZAT,</div>
           <div id="print-coord-name" style="font-weight:bold; margin-top:4px"></div>
+          <img id="print-sig-img-coord" class="sig-img" src="" style="display:none">
           <div class="print-sig-name" id="print-sig-coord">Șef laborator</div>
           <div style="font-size:11px;color:#555">Șef lab./comp./serv.</div>
         </div>
@@ -503,6 +580,19 @@
       <div class="field">
         <label>Email *</label>
         <input type="email" id="f-email" placeholder="adresa@incdfp.ro">
+      </div>
+      <div class="field full">
+        <label>Semnătură solicitant</label>
+        <div id="sig-upload-area" class="sig-upload-box" onclick="document.getElementById('sig-file-input').click()">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--text3);flex-shrink:0"><path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span style="font-size:13px;color:var(--text2)" id="sig-upload-label">Încarcă imagine cu semnătura (PNG/JPG, fond alb sau transparent)</span>
+        </div>
+        <input type="file" id="sig-file-input" accept="image/*" style="display:none" onchange="loadSig(this)">
+        <div id="sig-preview-row" style="display:none" class="sig-preview-wrap">
+          <img id="sig-preview-img" src="" alt="semnătură">
+          <button class="btn btn-secondary btn-sm" onclick="clearSig()">Elimină</button>
+        </div>
+        <p class="hint">Semnătura se salvează în browser — nu trebuie reîncărcată la fiecare cerere.</p>
       </div>
     </div>
   </div>
@@ -588,6 +678,24 @@
   <h1>Dashboard coordonator</h1>
   <p class="subtitle">Gestionați cererile de concediu ale membrilor laboratorului.</p>
 
+  <div class="sig-settings-card" id="coord-sig-settings" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-weight:600;font-size:14px">Semnătură coordonator</div>
+        <div class="hint">Apare în PDF la secțiunea VIZAT. Se salvează în browser.</div>
+      </div>
+    </div>
+    <div id="coord-sig-upload-area" class="sig-upload-box" onclick="document.getElementById('coord-sig-file').click()">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--text3);flex-shrink:0"><path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span style="font-size:13px;color:var(--text2)" id="coord-sig-upload-label">Încarcă semnătură coordonator (PNG/JPG)</span>
+    </div>
+    <input type="file" id="coord-sig-file" accept="image/*" style="display:none" onchange="loadCoordSig(this)">
+    <div id="coord-sig-preview-row" style="display:none;margin-top:10px" class="sig-preview-wrap">
+      <img id="coord-sig-preview-img" src="" alt="semnătură coordonator">
+      <button class="btn btn-secondary btn-sm" onclick="clearCoordSig()">Elimină</button>
+    </div>
+  </div>
+
   <div class="stats-row" id="stats-row"></div>
 
   <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:10px">
@@ -607,17 +715,62 @@
   <div class="detail-panel" id="detail-panel"></div>
 </div>
 
+<!-- PAGE: SOLDURI -->
+<div class="page" id="page-solduri">
+  <h1>Sold zile concediu</h1>
+  <p class="subtitle">Situația zilelor de concediu rămase per membru al laboratorului.</p>
+
+  <div class="sold-year-bar">
+    <label style="font-size:13px;font-weight:500;color:var(--text2)">An:</label>
+    <select id="sold-year-select" onchange="renderSold()"></select>
+    <span class="hint" style="margin-left:4px">Doar cererile aprobate sunt scăzute din sold.</span>
+  </div>
+
+  <div id="sold-table-wrap"></div>
+
+  <div class="sold-legend">
+    <span><i style="background:var(--green)"></i> Sold pozitiv</span>
+    <span><i style="background:var(--amber)"></i> Sub 5 zile rămase</span>
+    <span><i style="background:var(--red)"></i> Sold epuizat / depășit</span>
+  </div>
+
+  <!-- Adăugare membru — vizibil doar după login coordonator -->
+  <div id="sold-add-section" style="display:none">
+    <div style="margin-top:28px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <h2 style="margin:0;font-size:15px">Configurare solduri inițiale</h2>
+      <span class="hint">Modificările sunt salvate automat.</span>
+    </div>
+    <div class="sold-add-row">
+      <div class="field">
+        <label>Nume complet</label>
+        <input type="text" id="sold-new-name" placeholder="ex. Ionescu Maria">
+      </div>
+      <div class="field" style="max-width:120px">
+        <label>Zile alocate</label>
+        <input type="number" id="sold-new-zile" min="1" max="40" placeholder="ex. 21">
+      </div>
+      <div class="field" style="max-width:100px">
+        <label>An</label>
+        <input type="number" id="sold-new-an" min="2020" max="2040">
+      </div>
+      <button class="btn btn-primary" style="margin-bottom:1px" onclick="addSoldEntry()">+ Adaugă</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ─── CONFIG ───────────────────────────────────────────────
 const COORD_PASSWORD = 'geoedulab2025';
-const COORD_NAME = 'Dr. Coordonator Lab.';
+const COORD_NAME = 'Dr.Ing. Dragos Tataru';
 
 // ─── STATE ────────────────────────────────────────────────
 let requests = JSON.parse(localStorage.getItem('co_requests') || '[]');
+// sold: { "2025": { "Ionescu Maria": 21, ... }, ... }
+let soldData = JSON.parse(localStorage.getItem('co_sold') || '{}');
 let loggedIn = false;
 let selectedId = null;
-let coMode = 'consecutiv'; // 'consecutiv' | 'individual'
-let selectedDays = []; // array of 'YYYY-MM-DD' strings
+let coMode = 'consecutiv';
+let selectedDays = [];
 let calYear, calMonth;
 
 // ─── INIT ─────────────────────────────────────────────────
@@ -629,7 +782,75 @@ calYear = today.getFullYear();
 calMonth = today.getMonth();
 document.getElementById('f-an-ind').value = today.getFullYear();
 document.getElementById('f-data-cerere-ind').value = today.toISOString().split('T')[0];
+document.getElementById('sold-new-an').value = today.getFullYear();
 renderCal();
+initYearSelect();
+
+// Load saved applicant signature
+const savedSig = localStorage.getItem('sig_applicant');
+if (savedSig) showSigPreview(savedSig);
+
+function initYearSelect() {
+  const sel = document.getElementById('sold-year-select');
+  const years = new Set([today.getFullYear(), today.getFullYear()-1, today.getFullYear()+1]);
+  Object.keys(soldData).forEach(y => years.add(parseInt(y)));
+  requests.forEach(r => { if(r.an) years.add(parseInt(r.an)); });
+  [...years].sort((a,b)=>b-a).forEach(y => {
+    const o = document.createElement('option');
+    o.value = y; o.textContent = y;
+    if (y === today.getFullYear()) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+// Coord sig loaded when dashboard opens
+
+// ─── SIGNATURES ───────────────────────────────────────────
+function loadSig(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    localStorage.setItem('sig_applicant', e.target.result);
+    showSigPreview(e.target.result);
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+function showSigPreview(dataUrl) {
+  document.getElementById('sig-upload-area').style.display = 'none';
+  const row = document.getElementById('sig-preview-row');
+  row.style.display = 'flex';
+  document.getElementById('sig-preview-img').src = dataUrl;
+}
+function clearSig() {
+  localStorage.removeItem('sig_applicant');
+  document.getElementById('sig-upload-area').style.display = 'flex';
+  document.getElementById('sig-preview-row').style.display = 'none';
+  document.getElementById('sig-preview-img').src = '';
+}
+
+function loadCoordSig(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    localStorage.setItem('sig_coord', e.target.result);
+    showCoordSigPreview(e.target.result);
+    showToast('Semnătură coordonator salvată!', 'success');
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+function showCoordSigPreview(dataUrl) {
+  document.getElementById('coord-sig-upload-area').style.display = 'none';
+  const row = document.getElementById('coord-sig-preview-row');
+  row.style.display = 'flex';
+  document.getElementById('coord-sig-preview-img').src = dataUrl;
+}
+function clearCoordSig() {
+  localStorage.removeItem('sig_coord');
+  document.getElementById('coord-sig-upload-area').style.display = 'flex';
+  document.getElementById('coord-sig-preview-row').style.display = 'none';
+  document.getElementById('coord-sig-preview-img').src = '';
+}
 
 // ─── MODE TOGGLE ──────────────────────────────────────────
 function setMode(mode) {
@@ -711,8 +932,17 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
-  document.querySelectorAll('.nav-tab')[id === 'formular' ? 0 : 1].classList.add('active');
-  if (id === 'dashboard') { renderStats(); renderList(); }
+  document.getElementById('tab-' + id).classList.add('active');
+  if (id === 'dashboard') {
+    document.getElementById('coord-sig-settings').style.display = '';
+    const savedCoordSig = localStorage.getItem('sig_coord');
+    if (savedCoordSig) showCoordSigPreview(savedCoordSig);
+    renderStats(); renderList();
+  }
+  if (id === 'solduri') {
+    if (loggedIn) document.getElementById('sold-add-section').style.display = '';
+    renderSold();
+  }
 }
 
 function requireLogin(page) {
@@ -728,6 +958,7 @@ function doLogin() {
     document.getElementById('login-pass').value = '';
     closeLogin();
     showPage('dashboard');
+    document.getElementById('sold-add-section').style.display = '';
   } else {
     document.getElementById('login-pass').value = '';
     document.getElementById('login-pass').placeholder = 'Parolă incorectă...';
@@ -755,7 +986,9 @@ function submitRequest() {
     showToast('Adresă email invalidă', 'error'); return;
   }
 
-  let req = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), name, functia, lab, email, suplinitor, obs, status: 'pending', createdAt: new Date().toISOString(), updatedAt: null, coMode };
+  const req = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), name, functia, lab, email, suplinitor, obs, status: 'pending', createdAt: new Date().toISOString(), updatedAt: null, coMode,
+    sigApplicant: localStorage.getItem('sig_applicant') || ''
+  };
 
   if (coMode === 'consecutiv') {
     const zile = document.getElementById('f-zile').value.trim();
@@ -763,12 +996,12 @@ function submitRequest() {
     const dataInceput = document.getElementById('f-data-inceput').value;
     const dataCerere = document.getElementById('f-data-cerere').value;
     if (!zile || !dataInceput) { showToast('Completați numărul de zile și data de început *', 'error'); return; }
-    Object.assign(req, { zile: parseInt(zile), an, dataInceput, dataCerere });
+    req.zile = parseInt(zile); req.an = an; req.dataInceput = dataInceput; req.dataCerere = dataCerere;
   } else {
     const an = document.getElementById('f-an-ind').value.trim();
     const dataCerere = document.getElementById('f-data-cerere-ind').value;
     if (selectedDays.length === 0) { showToast('Selectați cel puțin o zi de concediu', 'error'); return; }
-    Object.assign(req, { zile: selectedDays.length, an, dataCerere, zileLista: [...selectedDays], dataInceput: selectedDays[0] });
+    req.zile = selectedDays.length; req.an = an; req.dataCerere = dataCerere; req.zileLista = [...selectedDays]; req.dataInceput = selectedDays[0];
   }
 
   requests.unshift(req);
@@ -932,7 +1165,19 @@ function previewPDF(id) {
   document.getElementById('print-sig-solicitant').textContent = r.name;
   document.getElementById('print-coord-name').textContent = COORD_NAME;
   document.getElementById('print-meta').textContent = `Generat automat · ID cerere: ${r.id} · ${new Date().toLocaleString('ro-RO')}`;
-  document.getElementById('stamp').classList.toggle('show', approved);
+
+  // Semnătură solicitant — salvată la momentul completării cererii, sau din localStorage curent
+  const sigSol = r.sigApplicant || localStorage.getItem('sig_applicant') || '';
+  const imgSol = document.getElementById('print-sig-img-solicitant');
+  if (sigSol) { imgSol.src = sigSol; imgSol.style.display = 'block'; }
+  else { imgSol.style.display = 'none'; }
+
+  // Semnătură coordonator — doar dacă cererea e aprobată
+  const sigCoord = approved ? (localStorage.getItem('sig_coord') || '') : '';
+  const imgCoord = document.getElementById('print-sig-img-coord');
+  if (sigCoord) { imgCoord.src = sigCoord; imgCoord.style.display = 'block'; }
+  else { imgCoord.style.display = 'none'; }
+
   document.getElementById('print-overlay').classList.add('show');
 }
 
@@ -960,6 +1205,132 @@ function printPDF() {
   </body></html>`);
   w.document.close();
   setTimeout(() => { w.focus(); w.print(); }, 400);
+}
+
+// ─── SOLD FUNCTIONS ───────────────────────────────────────
+function saveSold() { localStorage.setItem('co_sold', JSON.stringify(soldData)); }
+
+function addSoldEntry() {
+  const name = document.getElementById('sold-new-name').value.trim();
+  const zile = parseInt(document.getElementById('sold-new-zile').value);
+  const an = document.getElementById('sold-new-an').value;
+  if (!name || !zile || !an) { showToast('Completați toate câmpurile', 'error'); return; }
+  if (!soldData[an]) soldData[an] = {};
+  if (soldData[an][name] !== undefined) { showToast('Persoana există deja pentru acest an. Editează direct din tabel.', 'error'); return; }
+  soldData[an][name] = zile;
+  saveSold();
+  document.getElementById('sold-new-name').value = '';
+  document.getElementById('sold-new-zile').value = '';
+  // Sync year select
+  const sel = document.getElementById('sold-year-select');
+  if (![...sel.options].find(o => o.value == an)) {
+    const o = document.createElement('option'); o.value = an; o.textContent = an; sel.appendChild(o);
+  }
+  sel.value = an;
+  showToast('Membru adăugat!', 'success');
+  renderSold();
+}
+
+function deleteSoldEntry(an, name) {
+  if (!confirm(`Ștergi soldul pentru ${name} (${an})?`)) return;
+  delete soldData[an][name];
+  saveSold(); renderSold();
+}
+
+function startEditSold(an, name) {
+  const cell = document.getElementById(`sold-cell-${CSS.escape(an+'-'+name)}`);
+  const current = soldData[an][name];
+  cell.innerHTML = `<input class="sold-inline-input" id="sold-inline" type="number" min="0" max="60" value="${current}"
+    onblur="commitEditSold('${an}','${name}')"
+    onkeydown="if(event.key==='Enter') commitEditSold('${an}','${name}'); if(event.key==='Escape') renderSold();">`;
+  document.getElementById('sold-inline').focus();
+  document.getElementById('sold-inline').select();
+}
+
+function commitEditSold(an, name) {
+  const inp = document.getElementById('sold-inline');
+  if (!inp) return;
+  const val = parseInt(inp.value);
+  if (!isNaN(val) && val >= 0) { soldData[an][name] = val; saveSold(); }
+  renderSold();
+}
+
+function renderSold() {
+  const an = document.getElementById('sold-year-select').value;
+  const wrap = document.getElementById('sold-table-wrap');
+
+  // Compute used days per person for this year from approved requests
+  const used = {};
+  requests.forEach(r => {
+    if (r.status === 'approved' && String(r.an) === String(an)) {
+      const key = r.name;
+      used[key] = (used[key] || 0) + (parseInt(r.zile) || 0);
+    }
+  });
+
+  // Merge members from soldData + anyone with approved requests this year
+  const members = new Set([
+    ...Object.keys(soldData[an] || {}),
+    ...Object.keys(used)
+  ]);
+
+  if (members.size === 0) {
+    wrap.innerHTML = `<div class="empty"><div class="empty-icon">📊</div><p>Nu există date pentru ${an}.${loggedIn ? ' Adaugă membri mai jos.' : ''}</p></div>`;
+    return;
+  }
+
+  const rows = [...members].sort().map(name => {
+    const alocat = (soldData[an] && soldData[an][name] !== undefined) ? soldData[an][name] : null;
+    const consumat = used[name] || 0;
+    const ramas = alocat !== null ? alocat - consumat : null;
+    const pct = (alocat && alocat > 0) ? Math.min(100, Math.round((consumat / alocat) * 100)) : 0;
+
+    let barColor = '#1a7a4a';
+    let numClass = 'ok';
+    if (ramas !== null) {
+      if (ramas <= 0) { barColor = '#b83232'; numClass = 'empty-val'; }
+      else if (ramas < 5) { barColor = '#9a6200'; numClass = 'warn'; }
+    }
+
+    const cellId = `sold-cell-${an}-${name}`.replace(/\s/g,'_');
+    const editControls = loggedIn ? `
+      <button class="sold-edit-btn" onclick="startEditSold('${an}','${name}')">✎ editează</button>
+      <button class="sold-edit-btn" style="color:var(--red)" onclick="deleteSoldEntry('${an}','${name}')">✕</button>
+    ` : '';
+
+    return `<tr>
+      <td style="font-weight:500">${name}</td>
+      <td id="${cellId}">
+        ${alocat !== null
+          ? `<span style="font-family:'DM Mono',monospace;font-size:13px">${alocat}</span>`
+          : `<span style="color:var(--text3);font-size:12px">—</span>`}
+      </td>
+      <td><span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text2)">${consumat}</span></td>
+      <td>
+        <div class="sold-bar-wrap">
+          <div class="sold-bar-bg">
+            <div class="sold-bar-fill" style="width:${pct}%;background:${barColor}"></div>
+          </div>
+          <span class="sold-num ${numClass}">
+            ${ramas !== null ? ramas : `<span style="color:var(--text3)">?</span>`}
+          </span>
+        </div>
+      </td>
+      <td style="white-space:nowrap">${editControls}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <table class="sold-table">
+      <thead><tr>
+        <th>Nume</th>
+        <th>Zile alocate</th>
+        <th>Consumate</th>
+        <th>Rămase</th>
+        ${loggedIn ? '<th></th>' : ''}
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
 }
 
 // ─── CSV EXPORT ───────────────────────────────────────────
