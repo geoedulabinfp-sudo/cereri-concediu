@@ -1012,7 +1012,7 @@ function submitRequest() {
 
 function resetForm() {
   ['f-name','f-functia','f-email','f-suplinitor','f-obs'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
-  document.getElementById('f-lab').value = 'GeoEduLab';
+  document.getElementById('f-lab').value = '500';
   const fi = document.getElementById('f-data-inceput'); if(fi) fi.value = '';
   const fz = document.getElementById('f-zile'); if(fz) fz.value = '';
   document.getElementById('f-data-cerere').value = today.toISOString().split('T')[0];
