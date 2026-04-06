@@ -549,9 +549,15 @@
       <div class="print-meta" id="print-meta"></div>
     </div>
     <div class="print-close-row">
-      <button class="btn btn-primary" onclick="printPDF()">&#x1F4BE; Descarcă PDF (Print)</button>
-      <button class="btn btn-approve" id="btn-send-hr" onclick="sendToHR()" style="display:none">&#x2709; Trimite la Resurse Umane</button>
+      <button class="btn btn-primary" onclick="printPDFAndShowStep2()">&#x1F4BE; Descarcă PDF</button>
       <button class="btn btn-secondary" onclick="closePrint()">Închide</button>
+    </div>
+    <!-- Pasul 2: trimitere HR — apare după descărcare -->
+    <div id="hr-step2" style="display:none;margin-top:12px;background:var(--surface,#fff);border:1px solid #e2e0d8;border-radius:10px;padding:16px 20px;max-width:640px;margin-left:auto;margin-right:auto">
+      <p style="font-size:13px;color:#5a5852;margin-bottom:10px">
+        <strong>Pasul 2</strong> — PDF-ul a fost descărcat. Acum trimite emailul către Resurse Umane și atașează manual fișierul PDF descărcat.
+      </p>
+      <button class="btn btn-approve" onclick="sendToHR()">&#x2709; Deschide email către Resurse Umane</button>
     </div>
   </div>
 </div>
@@ -1284,9 +1290,10 @@ function previewPDF(id) {
   else { imgCoord.style.display = 'none'; }
 
   document.getElementById('print-overlay').classList.add('show');
-  // Butonul HR apare doar pentru cereri aprobate
-  document.getElementById('btn-send-hr').style.display = approved ? '' : 'none';
-  document.getElementById('btn-send-hr').dataset.reqId = id;
+  document.getElementById('hr-step2').style.display = 'none';
+  // Stocăm id-ul cererii curente pentru sendToHR
+  document.getElementById('hr-step2').dataset.reqId = id;
+  document.getElementById('hr-step2').dataset.approved = approved ? '1' : '0';
 }
 
 function buildPeriodTextPlain(r) {
@@ -1299,42 +1306,45 @@ function buildPeriodTextPlain(r) {
   return `începând cu data de ${fmt(r.dataInceput)}`;
 }
 
+function printPDFAndShowStep2() {
+  printPDF();
+  // Arată pasul 2 doar pentru cereri aprobate
+  const step2 = document.getElementById('hr-step2');
+  if (step2.dataset.approved === '1') {
+    setTimeout(() => { step2.style.display = ''; }, 800);
+  }
+}
+
 function sendToHR() {
-  const id = document.getElementById('btn-send-hr').dataset.reqId;
+  const step2 = document.getElementById('hr-step2');
+  const id = step2.dataset.reqId;
   const r = requests.find(x => x.id === id);
   if (!r) return;
 
-  const btn = document.getElementById('btn-send-hr');
-  btn.disabled = true;
-  btn.textContent = 'Se trimite...';
-
   const period = buildPeriodTextPlain(r);
-  const docLink = `${window.location.href.split('?')[0]}?doc=${r.id}`;
-
-  emailjs.send(EJS_SERVICE_ID, EJS_TPL_HR, {
-    to_email:    HR_EMAIL,
-    nume:        r.name,
-    functia:     r.functia,
-    laborator:   r.lab,
-    perioada:    period,
-    an:          r.an,
-    data_cerere: fmt(r.dataCerere),
-    coord_name:  COORD_NAME,
-    id_cerere:   r.id,
-    doc_link:    docLink
-  }).then(() => {
-    showToast('Email trimis la Resurse Umane!', 'success');
-    btn.disabled = false;
-    btn.innerHTML = '&#x2709; Trimite la Resurse Umane';
-  }).catch(err => {
-    console.error('EmailJS HR error:', err);
-    showToast('Eroare EmailJS. Verifică configurația.', '');
-    btn.disabled = false;
-    btn.innerHTML = '&#x2709; Trimite la Resurse Umane';
-  });
+  const subject = encodeURIComponent(`Cerere concediu aprobată — ${r.name}`);
+  const body = encodeURIComponent(
+    `Bună ziua,\n\n` +
+    `Vă transmitem cererea de concediu de odihnă aprobată pentru:\n\n` +
+    `Solicitant: ${r.name}\n` +
+    `Funcția: ${r.functia}\n` +
+    `Laborator: ${r.lab}\n` +
+    `Perioadă: ${period}\n` +
+    `An: ${r.an}\n` +
+    `Data cererii: ${fmt(r.dataCerere)}\n` +
+    `Aprobat de: ${COORD_NAME}\n` +
+    `ID cerere: ${r.id}\n\n` +
+    `Documentul semnat este atașat acestui email.\n\n` +
+    `Cu stimă,\n${COORD_NAME}\nGeoEduLab — INCDFP`
+  );
+  window.location.href = `mailto:${HR_EMAIL}?subject=${subject}&body=${body}`;
+  showToast('Se deschide clientul de email...', 'success');
 }
 
-function closePrint() { document.getElementById('print-overlay').classList.remove('show'); }
+function closePrint() {
+  document.getElementById('print-overlay').classList.remove('show');
+  document.getElementById('hr-step2').style.display = 'none';
+}
 
 function printPDF() {
   const content = document.getElementById('print-doc').innerHTML;
