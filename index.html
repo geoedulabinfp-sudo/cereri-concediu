@@ -556,7 +556,17 @@
   </div>
 </div>
 
-<!-- PAGE: FORMULAR -->
+<!-- DOC VIEWER — pentru HR, accesat via ?doc=ID -->
+<div id="doc-viewer-overlay" style="display:none;position:fixed;inset:0;background:rgba(20,20,18,0.92);z-index:500;align-items:flex-start;justify-content:center;padding:32px 16px;overflow-y:auto">
+  <div style="width:100%;max-width:680px">
+    <div style="background:#fff;border-radius:6px;padding:32px;text-align:center" id="doc-viewer-inner">
+      <p style="font-family:sans-serif;font-size:14px;color:#555;margin-bottom:16px">Se încarcă documentul...</p>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:16px">
+      <button onclick="window.print()" style="padding:10px 22px;background:#2a5caa;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer">🖨 Printează / Salvează PDF</button>
+    </div>
+  </div>
+</div>
 <div class="page active" id="page-formular">
   <h1>Cerere concediu de odihnă</h1>
   <p class="subtitle">Completați formularul de mai jos. Cererea va fi trimisă coordonatorului pentru aprobare.</p>
@@ -574,7 +584,7 @@
       </div>
       <div class="field">
         <label>Laborator / Compartiment</label>
-        <input type="text" id="f-lab" value="500">
+        <input type="text" id="f-lab" value="GeoEduLab">
       </div>
       <div class="field">
         <label>Email *</label>
@@ -761,7 +771,13 @@
 // ─── CONFIG ───────────────────────────────────────────────
 const COORD_PASSWORD = 'geoedulab2025';
 const COORD_NAME = 'Dr.Ing. Dragos Tataru';
-const HR_EMAIL = 'geoedulab.infp@gmail.com'; // ← schimbă adresa HR aici
+const HR_EMAIL = 'geoedulab.infp@gmail.com'; // ← adresa HR
+
+// ─── EMAILJS CONFIG ── înlocuiește cu valorile din contul tău EmailJS ──────
+const EJS_PUBLIC_KEY      = 'INLOCUIESTE_PUBLIC_KEY';       // Account → Public Key
+const EJS_SERVICE_ID      = 'INLOCUIESTE_SERVICE_ID';       // Email Services → Service ID
+const EJS_TPL_SOLICITANT  = 'INLOCUIESTE_TPL_CONFIRMARE';   // Template: to_email, nume, functia, perioada, an, data_cerere, id_cerere, coord_name
+const EJS_TPL_HR          = 'INLOCUIESTE_TPL_HR';           // Template: to_email, nume, functia, laborator, perioada, an, data_cerere, coord_name, id_cerere, doc_link
 
 // ─── STATE ────────────────────────────────────────────────
 let requests = JSON.parse(localStorage.getItem('co_requests') || '[]');
@@ -789,6 +805,74 @@ initYearSelect();
 // Load saved applicant signature
 const savedSig = localStorage.getItem('sig_applicant');
 if (savedSig) showSigPreview(savedSig);
+
+// ─── DOC VIEWER (HR link ?doc=ID) ─────────────────────────
+(function checkDocParam() {
+  const params = new URLSearchParams(window.location.search);
+  const docId = params.get('doc');
+  if (!docId) return;
+  // Ascunde nav și paginile normale
+  document.querySelector('nav').style.display = 'none';
+  document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+  const overlay = document.getElementById('doc-viewer-overlay');
+  overlay.style.display = 'flex';
+  const inner = document.getElementById('doc-viewer-inner');
+  // Caută cererea
+  const r = requests.find(x => x.id === docId);
+  if (!r) {
+    inner.innerHTML = `<p style="font-family:sans-serif;color:#b83232;font-size:15px">Documentul nu a fost găsit.<br><small>ID: ${docId}</small></p>`;
+    return;
+  }
+  if (r.status !== 'approved') {
+    inner.innerHTML = `<p style="font-family:sans-serif;color:#9a6200;font-size:15px">Această cerere nu este încă aprobată.</p>`;
+    return;
+  }
+  // Construiește documentul inline
+  const period = buildPeriodTextPlain(r);
+  const suplinitor = r.suplinitor || '—';
+  const sigSol = r.sigApplicant || '';
+  const sigCoord = localStorage.getItem('sig_coord') || '';
+  inner.style.fontFamily = "'Times New Roman', serif";
+  inner.style.textAlign = 'left';
+  inner.style.fontSize = '13px';
+  inner.style.lineHeight = '1.7';
+  inner.innerHTML = `
+    <div style="text-align:center;margin-bottom:28px;border-bottom:2px solid #111;padding-bottom:10px">
+      <strong style="font-size:12px;text-transform:uppercase;letter-spacing:.06em">Institutul Național de Cercetare-Dezvoltare pentru Fizica Pământului</strong>
+    </div>
+    <div style="text-align:right;font-size:12px;margin-bottom:6px"><strong>Domnului Director General,</strong></div>
+    <div style="text-align:right;font-size:11px;color:#666;margin-bottom:24px">Aprob,<br>Director General</div>
+    <div style="text-align:center;font-size:14px;font-weight:bold;text-decoration:underline;margin:20px 0;text-transform:uppercase;letter-spacing:.08em">Cerere de concediu de odihnă</div>
+    <p style="text-align:justify;margin-bottom:14px">
+      Subsemnatul/a <strong>${r.name}</strong>, salariat(ă) al(a) INCDFP, în cadrul ${r.lab},
+      în funcția de <strong>${r.functia}</strong>, vă rog să binevoiți a-mi aproba efectuarea
+      a <strong>${r.zile} ${r.zile===1?'zi':'zile'}</strong> din concediul de odihnă legal pe anul <strong>${r.an}</strong>
+      precum și plata acestuia, conform programării, ${period}.
+    </p>
+    <p style="text-align:justify;margin-bottom:14px">
+      Pe toată perioada concediului de odihnă sarcinile profesionale vor fi suplinite de
+      către dl./d-na <strong>${suplinitor}</strong>.
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:48px;text-align:center;font-size:11px">
+      <div>
+        <div>Data: <strong>${fmt(r.dataCerere)}</strong></div>
+        ${sigSol ? `<img src="${sigSol}" style="max-height:52px;max-width:150px;object-fit:contain;margin:8px auto;display:block">` : '<div style="height:52px"></div>'}
+        <div style="font-weight:bold;border-top:1px solid #333;padding-top:6px;margin-top:8px">${r.name}</div>
+        <div style="font-size:10px;color:#555">Semnătură solicitant</div>
+      </div>
+      <div>
+        <div>VIZAT,</div>
+        <div style="font-weight:bold;margin-top:4px">${COORD_NAME}</div>
+        ${sigCoord ? `<img src="${sigCoord}" style="max-height:52px;max-width:150px;object-fit:contain;margin:8px auto;display:block">` : '<div style="height:52px"></div>'}
+        <div style="font-weight:bold;border-top:1px solid #333;padding-top:6px;margin-top:8px">Șef laborator</div>
+        <div style="font-size:10px;color:#555">Șef lab./comp./serv.</div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:#888;text-align:right;margin-top:28px;border-top:1px solid #ddd;padding-top:8px">
+      Generat automat · ID cerere: ${r.id} · Aprobat de ${COORD_NAME}
+    </div>
+  `;
+})();
 
 function initYearSelect() {
   const sel = document.getElementById('sold-year-select');
@@ -1007,12 +1091,33 @@ function submitRequest() {
   requests.unshift(req);
   save();
   resetForm();
-  showToast('Cerere trimisă cu succes!', 'success');
+  showToast('Cerere trimisă! Se trimite confirmarea pe email...', 'success');
+
+  // Email confirmare către solicitant via EmailJS
+  const period = req.coMode === 'individual'
+    ? `în datele: ${(req.zileLista||[]).map(fmt).join(', ')}`
+    : `${req.zile} zile începând cu ${fmt(req.dataInceput)}`;
+
+  emailjs.send(EJS_SERVICE_ID, EJS_TPL_SOLICITANT, {
+    to_email:   req.email,
+    nume:       req.name,
+    functia:    req.functia,
+    perioada:   period,
+    an:         req.an,
+    data_cerere: fmt(req.dataCerere),
+    id_cerere:  req.id,
+    coord_name: COORD_NAME
+  }).then(() => {
+    showToast('Confirmare trimisă pe email!', 'success');
+  }).catch(err => {
+    console.error('EmailJS error:', err);
+    showToast('Cerere salvată. Emailul nu a putut fi trimis automat.', '');
+  });
 }
 
 function resetForm() {
   ['f-name','f-functia','f-email','f-suplinitor','f-obs'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
-  document.getElementById('f-lab').value = '500';
+  document.getElementById('f-lab').value = 'GeoEduLab';
   const fi = document.getElementById('f-data-inceput'); if(fi) fi.value = '';
   const fz = document.getElementById('f-zile'); if(fz) fz.value = '';
   document.getElementById('f-data-cerere').value = today.toISOString().split('T')[0];
@@ -1184,34 +1289,49 @@ function previewPDF(id) {
   document.getElementById('btn-send-hr').dataset.reqId = id;
 }
 
+function buildPeriodTextPlain(r) {
+  if (r.coMode === 'individual') {
+    const days = r.zileLista || [];
+    if (days.length === 1) return `în data de ${fmt(days[0])}`;
+    const last = days[days.length - 1];
+    return `în datele de ${days.slice(0,-1).map(fmt).join(', ')} și ${fmt(last)}`;
+  }
+  return `începând cu data de ${fmt(r.dataInceput)}`;
+}
+
 function sendToHR() {
   const id = document.getElementById('btn-send-hr').dataset.reqId;
   const r = requests.find(x => x.id === id);
   if (!r) return;
 
-  const pageUrl = window.location.href.split('?')[0];
-  const period = r.coMode === 'individual'
-    ? `în datele: ${(r.zileLista||[]).map(fmt).join(', ')}`
-    : `${r.zile} zile începând cu ${fmt(r.dataInceput)}`;
+  const btn = document.getElementById('btn-send-hr');
+  btn.disabled = true;
+  btn.textContent = 'Se trimite...';
 
-  const subject = encodeURIComponent(`Cerere concediu aprobată — ${r.name}`);
-  const body = encodeURIComponent(
-    `Bună ziua,\n\n` +
-    `Vă transmitem cererea de concediu de odihnă aprobată pentru:\n\n` +
-    `Solicitant: ${r.name}\n` +
-    `Funcția: ${r.functia}\n` +
-    `Laborator: ${r.lab}\n` +
-    `Perioadă: ${period}\n` +
-    `An: ${r.an}\n` +
-    `Data cererii: ${fmt(r.dataCerere)}\n` +
-    `Aprobat de: ${COORD_NAME}\n\n` +
-    `Documentul semnat poate fi accesat și tipărit la adresa:\n${pageUrl}\n` +
-    `(ID cerere: ${r.id})\n\n` +
-    `Cu stimă,\n${COORD_NAME}\nGeoEduLab — INCDFP`
-  );
+  const period = buildPeriodTextPlain(r);
+  const docLink = `${window.location.href.split('?')[0]}?doc=${r.id}`;
 
-  window.location.href = `mailto:${HR_EMAIL}?subject=${subject}&body=${body}`;
-  showToast('Se deschide clientul de email...', 'success');
+  emailjs.send(EJS_SERVICE_ID, EJS_TPL_HR, {
+    to_email:    HR_EMAIL,
+    nume:        r.name,
+    functia:     r.functia,
+    laborator:   r.lab,
+    perioada:    period,
+    an:          r.an,
+    data_cerere: fmt(r.dataCerere),
+    coord_name:  COORD_NAME,
+    id_cerere:   r.id,
+    doc_link:    docLink
+  }).then(() => {
+    showToast('Email trimis la Resurse Umane!', 'success');
+    btn.disabled = false;
+    btn.innerHTML = '&#x2709; Trimite la Resurse Umane';
+  }).catch(err => {
+    console.error('EmailJS HR error:', err);
+    showToast('Eroare EmailJS. Verifică configurația.', '');
+    btn.disabled = false;
+    btn.innerHTML = '&#x2709; Trimite la Resurse Umane';
+  });
 }
 
 function closePrint() { document.getElementById('print-overlay').classList.remove('show'); }
@@ -1395,6 +1515,10 @@ function showToast(msg, type='') {
   setTimeout(() => t.classList.remove('show'), 2800);
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closePrint(); closeLogin(); } });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+  emailjs.init(EJS_PUBLIC_KEY);
 </script>
 </body>
 </html>
